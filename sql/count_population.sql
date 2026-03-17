@@ -1,0 +1,3 @@
+SELECT CAST(COUNT(*) AS INTEGER)
+FROM population
+WHERE alive IS TRUE;

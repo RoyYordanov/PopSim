@@ -1,0 +1,1 @@
+UPDATE population SET age = age + 1;
