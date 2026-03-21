@@ -117,3 +117,6 @@ def Ageing():
     cursor.execute(load_query("age_population"))
     conn.commit()
     conn.close()
+
+def FamilyFormation():
+    
