@@ -24,12 +24,12 @@
         "100+":  { "male": 0.05, "female": 0.05 }
     },
     "current_year": 2026,
-    "timespan": 100,
-    "birth_rate": 1,
-    "death_rate": 15,
+    "timespan": 10,
+    "birth_rate": 5,
+    "death_rate": 5,
     "death_age": 80,
     "marriage_rate": 3.8,
-    "initial_marriage_rate": 0.4,
+    "initial_marriage_rate": 20,
     "marriage_age": 18,
     "parenting_age": {
         "newgen": 31,

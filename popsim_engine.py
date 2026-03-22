@@ -40,9 +40,6 @@ def load_query(name):
 def noisy(value, noise):
     return random.gauss(value, noise)
 
-conn = sqlite3.connect("population.db")
-cursor = conn.cursor()
-
 def get_population_count(conn, cursor):
     count = int(cursor.execute(load_query("count_population")).fetchone()[0])
     return count
@@ -80,10 +77,6 @@ def InsertInitialPopulation(conn, cursor):
 
     conn.commit()
 
-def FamilyFormation(conn, cursor):
-    cursor.execute(load_query("family_formation"), (cfg.marriage_rate, cfg.marriage_age, cfg.marriage_age_gap, cfg.initial_marriage_rate))
-    conn.commit()
-
 def Death(conn, cursor):
     death_rate = max(0, noisy(cfg.death_rate, 0.5))
     cursor.execute(load_query("death_pool"), (cfg.death_age, death_rate))
@@ -91,7 +84,7 @@ def Death(conn, cursor):
     conn.commit()
 
 def Birth(conn, cursor):
-    to_be_born = int(get_population_count(conn, cursor) * cfg.birth_rate / 100)
+    to_be_born = int(get_population_count(conn, cursor) * cfg.birth_rate / 1000)
     births_batch = []
 
     for _ in range(to_be_born):
@@ -107,4 +100,49 @@ def Ageing(conn, cursor):
 
     conn.commit()
 
-conn.close()
+def FamilyFormation(conn, cursor):
+    # pool of bachelors
+    cursor.execute("""
+        SELECT id, age, sex
+        FROM population
+        WHERE alive = 1
+        AND age >= ?
+        AND marital_status = 'single'
+        """, (cfg.marriage_age,))
+    singles = cursor.fetchall()
+
+    # split male and female
+    males = [(id, age) for id, age, sex in singles if sex == 'male']
+    females = [(id, age) for id, age, sex in singles if sex == 'female']
+
+    # shuffle them
+    random.shuffle(males)
+    random.shuffle(females)
+
+    # match based on marriage_age_gap
+    couples = []
+    taken_females = set()
+
+    for m_id, m_age in males:
+        for f_id, f_age in females:
+            if f_id not in taken_females and abs(m_age - f_age) <= cfg.marriage_age_gap:
+                couples.append((m_id, f_id))
+                taken_females.add(f_id)
+                break # each male gets at most one match
+    
+    # limit to marriage rate
+    num_couples = int(get_population_count(conn, cursor) * cfg.initial_marriage_rate /1000 /2)
+    couples = couples[:num_couples]
+
+    # update marrital_status and partner_id
+    for m_id, f_id in couples:
+        cursor.execute("""
+            UPDATE population
+            SET marital_status = 'married', partner_id = ? WHERE id = ?
+            """, (m_id, f_id))
+        cursor.execute("""
+            UPDATE population
+            SET marital_status = 'married', partner_id = ? WHERE id = ?
+            """, (f_id, m_id))
+    
+    conn.commit()

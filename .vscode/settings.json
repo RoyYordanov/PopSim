@@ -4,5 +4,5 @@
     "workbench.editor.enablePreview": true,
     "editor.stickyScroll.enabled": true,
     "editor.minimap.enabled": false,
-    "editor.glyphMargin": false
+    "editor.glyphMargin": true
 }
