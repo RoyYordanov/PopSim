@@ -3,7 +3,7 @@
     "sex_age_distribution": {
         "0-4":   { "male": 3.1,  "female": 3.25 },
         "5-9":   { "male": 2.95, "female": 3.1 },
-        "10-14": { "male": 2.85, "female": 0 },
+        "10-14": { "male": 2.85, "female": 2.6 },
         "15-19": { "male": 3.05, "female": 2.85 },
         "20-24": { "male": 3.6,  "female": 3.75 },
         "25-29": { "male": 4.25, "female": 4.2 },
@@ -31,7 +31,10 @@
     "marriage_rate": 3.8,
     "initial_marriage_rate": 0.4,
     "marriage_age": 18,
-    "parenting_age": 25,
+    "parenting_age": {
+        "newgen": 31,
+        "oldgen": 25
+    },
     "marriage_age_gap": 1,
     "children_per_couple": 2,
     "queer_rate": 0.05

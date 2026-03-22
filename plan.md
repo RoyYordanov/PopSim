@@ -111,3 +111,6 @@ The following graphs:
 - SQL query files to call & manipulate the data
 - FastAPI
 - HTML & CSS frontend
+
+Useful Resources:
+SQL[hps://web.stanford.edu/group/csp/cs21/htmlcheatsheet.pdf]

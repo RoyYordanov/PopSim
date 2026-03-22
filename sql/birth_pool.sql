@@ -1,1 +1,0 @@
-INSERT INTO population (age, sex, alive, year_of_birth) VALUES (?, ?, TRUE, ?);

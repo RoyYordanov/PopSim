@@ -40,20 +40,17 @@ def load_query(name):
 def noisy(value, noise):
     return random.gauss(value, noise)
 
+conn = sqlite3.connect("population.db")
+cursor = conn.cursor()
 
-def get_population_count():
-    conn = sqlite3.connect("population.db")
-    cursor = conn.cursor()
+def get_population_count(conn, cursor):
     count = int(cursor.execute(load_query("count_population")).fetchone()[0])
-    conn.close()
     return count
 
-def InsertInitialPopulation():
+def InsertInitialPopulation(conn, cursor):
 
     batch_of_people = [] # Temporary list to hold people before batch insertion
     
-    conn = sqlite3.connect("population.db")
-    cursor = conn.cursor()
     cursor.execute(load_query("delete_table")) # Clear existing data
     cursor.execute(load_query("initial_table"))
     insert_query = load_query("insert_person")
@@ -79,41 +76,35 @@ def InsertInitialPopulation():
             batch_of_people.append((age, "female", True, cfg.current_year - age))
 
     # Insert all people into the database
-    for person in batch_of_people:
-        cursor.execute(insert_query, person)
+    cursor.executemany(insert_query, batch_of_people)
 
     conn.commit()
-    conn.close()
 
-def Death():
+def FamilyFormation(conn, cursor):
+    cursor.execute(load_query("family_formation"), (cfg.marriage_rate, cfg.marriage_age, cfg.marriage_age_gap, cfg.initial_marriage_rate))
+    conn.commit()
 
-    conn = sqlite3.connect("population.db")
-    cursor = conn.cursor()
-    cursor.execute(load_query("death_pool"), (cfg.death_age, noisy(cfg.death_rate, 0.5)))
+def Death(conn, cursor):
+    death_rate = max(0, noisy(cfg.death_rate, 0.5))
+    cursor.execute(load_query("death_pool"), (cfg.death_age, death_rate))
 
     conn.commit()
-    conn.close()
 
-def Birth():
-    conn = sqlite3.connect("population.db")
-    cursor = conn.cursor()
-
-    to_be_born = int(get_population_count() * cfg.birth_rate / 100)
+def Birth(conn, cursor):
+    to_be_born = int(get_population_count(conn, cursor) * cfg.birth_rate / 100)
     births_batch = []
 
     for _ in range(to_be_born):
         sex = random.choice(["male", "female"])
         births_batch.append((0, sex, True, cfg.current_year))
 
-    for person in births_batch:
-        cursor.execute(load_query("insert_person"), person)
+    cursor.executemany(load_query("insert_person"), births_batch)
 
     conn.commit()
-    conn.close()
 
-def Ageing():
-    conn = sqlite3.connect("population.db")
-    cursor = conn.cursor()
+def Ageing(conn, cursor):
     cursor.execute(load_query("age_population"))
+
     conn.commit()
-    conn.close()
+
+conn.close()
