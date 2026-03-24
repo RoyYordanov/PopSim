@@ -1,2 +1,1 @@
-SELECT * from population
-LIMIT 10
+SELECT * from relationships WHERE person_a = 559;

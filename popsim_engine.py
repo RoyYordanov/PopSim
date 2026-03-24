@@ -22,6 +22,7 @@ class Config:
         self.marriage_age_gap = data["marriage_age_gap"]
         self.children_per_couple = data["children_per_couple"]
         self.queer_rate = data["queer_rate"]
+        self.start_year = data["current_year"]
 
 cfg = Config(config)
 
@@ -47,10 +48,8 @@ def get_population_count(conn, cursor):
 def InsertInitialPopulation(conn, cursor):
 
     batch_of_people = [] # Temporary list to hold people before batch insertion
-    
-    cursor.execute(load_query("delete_table")) # Clear existing data
-    cursor.execute(load_query("initial_table"))
-    insert_query = load_query("insert_person")
+
+    cursor.executescript(load_query("initial_table"))
 
     def random_age_from_group(age_group):
         if "+" in age_group:
@@ -73,7 +72,7 @@ def InsertInitialPopulation(conn, cursor):
             batch_of_people.append((age, "female", True, cfg.current_year - age))
 
     # Insert all people into the database
-    cursor.executemany(insert_query, batch_of_people)
+    cursor.executemany(load_query("insert_person"), batch_of_people)
 
     conn.commit()
 
@@ -101,48 +100,80 @@ def Ageing(conn, cursor):
     conn.commit()
 
 def FamilyFormation(conn, cursor):
-    # pool of bachelors
+    # fetch eligible singles
     cursor.execute("""
-        SELECT id, age, sex
-        FROM population
+        SELECT id, age, sex FROM population
         WHERE alive = 1
         AND age >= ?
         AND marital_status = 'single'
-        """, (cfg.marriage_age,))
+    """, (cfg.marriage_age,))
     singles = cursor.fetchall()
 
-    # split male and female
-    males = [(id, age) for id, age, sex in singles if sex == 'male']
+    # fetch unparented children
+    cursor.execute("""
+        SELECT p.id, p.age FROM population p
+        WHERE p.alive = 1
+        AND p.age < ?
+        AND NOT EXISTS (
+            SELECT 1 FROM relationships r
+            WHERE r.person_b = p.id AND r.type = 'parent'
+        )
+    """, (cfg.marriage_age,))
+    children = cursor.fetchall()
+
+    males   = [(id, age) for id, age, sex in singles if sex == 'male']
     females = [(id, age) for id, age, sex in singles if sex == 'female']
 
-    # shuffle them
     random.shuffle(males)
     random.shuffle(females)
+    random.shuffle(children)
 
-    # match based on marriage_age_gap
     couples = []
-    taken_females = set()
+    taken_females  = set()
+    taken_children = set()
 
     for m_id, m_age in males:
         for f_id, f_age in females:
             if f_id not in taken_females and abs(m_age - f_age) <= cfg.marriage_age_gap:
-                couples.append((m_id, f_id))
+                children_this_couple = []
+                if f_age >= cfg.parenting_age:
+                    num_children = max(0, round(noisy(cfg.children_per_couple, 0.5)))
+                    assigned = 0
+                    for c_id, c_age in children:
+                        if assigned >= num_children:
+                            break
+                        if c_id not in taken_children and c_age <= f_age - cfg.parenting_age:
+                            children_this_couple.append(c_id)
+                            taken_children.add(c_id)
+                            assigned += 1
+                couples.append((m_id, f_id, children_this_couple))
                 taken_females.add(f_id)
-                break # each male gets at most one match
-    
-    # limit to marriage rate
-    num_couples = int(get_population_count(conn, cursor) * cfg.initial_marriage_rate /1000 /2)
+                break
+
+    # use initial_marriage_rate on first year, marriage_rate thereafter
+    rate = cfg.initial_marriage_rate if cfg.current_year == cfg.start_year else cfg.marriage_rate
+    num_couples = int(get_population_count(conn, cursor) * rate / 1000)
     couples = couples[:num_couples]
 
-    # update marrital_status and partner_id
-    for m_id, f_id in couples:
-        cursor.execute("""
-            UPDATE population
-            SET marital_status = 'married', partner_id = ? WHERE id = ?
-            """, (m_id, f_id))
-        cursor.execute("""
-            UPDATE population
-            SET marital_status = 'married', partner_id = ? WHERE id = ?
-            """, (f_id, m_id))
-    
+    relationship_rows = []
+    married_ids = []
+
+    for m_id, f_id, children_this_couple in couples:
+        relationship_rows.append((m_id, f_id, 'spouse'))
+        relationship_rows.append((f_id, m_id, 'spouse'))
+        married_ids.extend([m_id, f_id])
+        for c_id in children_this_couple:
+            relationship_rows.append((m_id, c_id, 'parent'))
+            relationship_rows.append((f_id, c_id, 'parent'))
+
+    cursor.executemany("""
+        INSERT INTO relationships (person_a, person_b, type)
+        VALUES (?, ?, ?)
+    """, relationship_rows)
+
+    cursor.executemany("""
+        UPDATE population SET marital_status = 'married'
+        WHERE id = ?
+    """, [(id,) for id in married_ids])
+
     conn.commit()

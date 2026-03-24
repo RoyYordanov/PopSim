@@ -24,18 +24,16 @@
         "100+":  { "male": 0.05, "female": 0.05 }
     },
     "current_year": 2026,
-    "timespan": 10,
-    "birth_rate": 5,
-    "death_rate": 5,
+    "start_year": 2026,
+    "timespan": 100,
+    "birth_rate": 6.5,
+    "death_rate": 6.5,
     "death_age": 80,
     "marriage_rate": 3.8,
     "initial_marriage_rate": 20,
     "marriage_age": 18,
-    "parenting_age": {
-        "newgen": 31,
-        "oldgen": 25
-    },
+    "parenting_age": 25,
     "marriage_age_gap": 1,
-    "children_per_couple": 2,
+    "children_per_couple": 3,
     "queer_rate": 0.05
 }

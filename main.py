@@ -9,12 +9,12 @@ conn = sqlite3.connect("population.db")
 cursor = conn.cursor()
 
 pe.InsertInitialPopulation(conn, cursor)
-pe.FamilyFormation(conn, cursor)
 
 for year in range(pe.cfg.current_year, pe.cfg.current_year + pe.cfg.timespan):
     print(f"Year: {year}")
     pe.cfg.current_year = year
     print("Population count:", pe.get_population_count(conn, cursor))
+    pe.FamilyFormation(conn, cursor)
     pe.Death(conn, cursor)
     pe.Birth(conn, cursor)
     pe.Ageing(conn, cursor)

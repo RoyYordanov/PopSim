@@ -1,1 +1,1 @@
-UPDATE population SET age = age + 1;
+UPDATE population SET age = age + 1 WHERE alive = 1;
